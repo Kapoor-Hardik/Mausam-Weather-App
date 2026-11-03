@@ -7,6 +7,7 @@ data class Weather(
     val windSpeedKmh: Double,
     val condition: WeatherCondition,
     val dailyForecast: List<ForecastDay>,
+    val hourlyForecast: List<HourlyForecast> = emptyList(),
     val lastUpdatedTimestamp: Long = System.currentTimeMillis(),
     val isFromCache: Boolean = false
 )

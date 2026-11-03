@@ -27,11 +27,12 @@ object WeatherDtoMapper {
 
     fun mapGeocodingItemToCity(itemDto: GeocodingItemDto?): City? {
         if (itemDto == null) return null
-        val name = itemDto.name?.trim() ?: return null
+        val name = itemDto.name?.trim()
+        if (name.isNullOrEmpty()) return null
         val lat = itemDto.latitude ?: return null
         val lon = itemDto.longitude ?: return null
         val country = itemDto.country?.trim() ?: "Unknown Country"
-        val id = itemDto.id ?: System.currentTimeMillis()
+        val id = itemDto.id ?: (lat.hashCode() * 31L + lon.hashCode())
 
         return City(
             id = id,
@@ -128,6 +129,7 @@ object WeatherDtoMapper {
     ): Weather {
         val currentWeather = mapCurrentWeatherDto(responseDto?.current)
         val dailyForecasts = mapDailyWeatherDtoToForecastDays(responseDto?.daily)
+        val hourlyForecasts = mapHourlyWeatherDtoToHourlyForecasts(responseDto?.hourly)
 
         return Weather(
             city = city,
@@ -136,6 +138,7 @@ object WeatherDtoMapper {
             windSpeedKmh = currentWeather.windSpeedKmh,
             condition = currentWeather.condition,
             dailyForecast = dailyForecasts,
+            hourlyForecast = hourlyForecasts,
             lastUpdatedTimestamp = System.currentTimeMillis(),
             isFromCache = isFromCache
         )

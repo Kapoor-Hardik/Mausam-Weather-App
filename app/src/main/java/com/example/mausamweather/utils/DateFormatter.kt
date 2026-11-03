@@ -11,7 +11,7 @@ object DateFormatter {
             val date = inputFormat.parse(isoDate) ?: return isoDate
             val outputFormat = SimpleDateFormat("EEE", Locale.getDefault())
             outputFormat.format(date)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             isoDate
         }
     }
