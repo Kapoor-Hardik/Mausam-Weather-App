@@ -1,6 +1,7 @@
 package com.example.mausamweather.di
 
 import android.content.Context
+import com.example.mausamweather.data.local.WeatherDatabase
 import com.example.mausamweather.data.remote.OpenMeteoRemoteDataSource
 import com.example.mausamweather.data.repository.MockWeatherRepository
 import com.example.mausamweather.data.repository.OpenMeteoWeatherRepository
@@ -14,6 +15,10 @@ class AppContainer(
     private val context: Context,
     useMockRepository: Boolean = false
 ) {
+    private val database: WeatherDatabase by lazy {
+        WeatherDatabase.getDatabase(context)
+    }
+
     private val remoteDataSource by lazy {
         OpenMeteoRemoteDataSource()
     }
@@ -22,7 +27,10 @@ class AppContainer(
         if (useMockRepository) {
             MockWeatherRepository()
         } else {
-            OpenMeteoWeatherRepository(remoteDataSource)
+            OpenMeteoWeatherRepository(
+                remoteDataSource = remoteDataSource,
+                weatherDao = database.weatherDao()
+            )
         }
     }
 }
