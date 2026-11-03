@@ -9,26 +9,30 @@ import com.example.mausamweather.domain.model.ForecastDay
 import com.example.mausamweather.domain.model.HourlyForecast
 import com.example.mausamweather.domain.model.Weather
 import com.example.mausamweather.domain.repository.WeatherRepository
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Demonstrates Polymorphism & Abstraction:
  * Real repository implementation combining live Open-Meteo network requests
- * with Room Database offline caching fallback.
+ * with Room Database offline caching fallback running safely on IO dispatcher.
  */
 class OpenMeteoWeatherRepository(
     private val remoteDataSource: OpenMeteoRemoteDataSource = OpenMeteoRemoteDataSource(),
-    private val weatherDao: WeatherDao? = null
+    private val weatherDao: WeatherDao? = null,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : WeatherRepository {
 
-    override suspend fun searchCity(query: String): Result<List<City>> {
+    override suspend fun searchCity(query: String): Result<List<City>> = withContext(ioDispatcher) {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) {
-            return Result.failure(IllegalArgumentException("City name cannot be empty."))
+            return@withContext Result.failure(IllegalArgumentException("City name cannot be empty."))
         }
 
         val networkResult = remoteDataSource.searchCity(trimmed)
         if (networkResult.isSuccess) {
-            return networkResult
+            return@withContext networkResult
         }
 
         // Offline fallback: Search local Room cache for matching cities
@@ -47,21 +51,21 @@ class OpenMeteoWeatherRepository(
                     )
                 }
             if (offlineMatches.isNotEmpty()) {
-                return Result.success(offlineMatches)
+                return@withContext Result.success(offlineMatches)
             }
         }
 
-        return networkResult
+        return@withContext networkResult
     }
 
-    override suspend fun getWeather(city: City): Result<Weather> {
+    override suspend fun getWeather(city: City): Result<Weather> = withContext(ioDispatcher) {
         val networkResult = remoteDataSource.getWeatherForecast(city)
 
         if (networkResult.isSuccess) {
             val liveWeather = networkResult.getOrThrow()
-            // Save fresh data to local Room cache
+            // Save fresh data to local Room cache asynchronously on IO
             weatherDao?.insertWeather(liveWeather.toEntity())
-            return Result.success(liveWeather)
+            return@withContext Result.success(liveWeather)
         }
 
         // Offline fallback: Query local Room cache by cityId or cityName
@@ -70,14 +74,14 @@ class OpenMeteoWeatherRepository(
                 ?: weatherDao.getWeatherByCityName(city.name)
 
             if (cachedEntity != null) {
-                return Result.success(cachedEntity.toDomain())
+                return@withContext Result.success(cachedEntity.toDomain())
             }
         }
 
         val originalException = networkResult.exceptionOrNull()
             ?: Exception("Unable to fetch live weather and no cached data available for ${city.name}.")
 
-        return Result.failure(originalException)
+        return@withContext Result.failure(originalException)
     }
 
     override suspend fun getWeatherByCoordinates(

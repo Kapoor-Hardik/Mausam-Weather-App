@@ -126,32 +126,32 @@ private class FakeOfflineWeatherService : WeatherApiService {
 private class FakeWeatherDao : WeatherDao {
     private val cache = mutableMapOf<Long, WeatherEntity>()
 
-    override fun insertWeather(weatherEntity: WeatherEntity): Long {
+    override suspend fun insertWeather(weatherEntity: WeatherEntity): Long {
         cache[weatherEntity.cityId] = weatherEntity
         return weatherEntity.cityId
     }
 
-    override fun getWeatherByCityId(cityId: Long): WeatherEntity? {
+    override suspend fun getWeatherByCityId(cityId: Long): WeatherEntity? {
         return cache[cityId]
     }
 
-    override fun getWeatherByCityName(cityName: String): WeatherEntity? {
+    override suspend fun getWeatherByCityName(cityName: String): WeatherEntity? {
         return cache.values.firstOrNull { it.cityName.equals(cityName, ignoreCase = true) }
     }
 
-    override fun getAllCachedWeather(): List<WeatherEntity> {
+    override suspend fun getAllCachedWeather(): List<WeatherEntity> {
         return cache.values.toList()
     }
 
-    override fun getRecentCachedCities(): List<WeatherEntity> {
+    override suspend fun getRecentCachedCities(): List<WeatherEntity> {
         return cache.values.sortedByDescending { it.cachedTimestamp }.take(5)
     }
 
-    override fun deleteWeatherByCityId(cityId: Long): Int {
+    override suspend fun deleteWeatherByCityId(cityId: Long): Int {
         return if (cache.remove(cityId) != null) 1 else 0
     }
 
-    override fun clearAllCache(): Int {
+    override suspend fun clearAllCache(): Int {
         val count = cache.size
         cache.clear()
         return count
