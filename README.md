@@ -224,3 +224,16 @@ Execute the following command in the Android Studio Terminal or Command Prompt:
 
 - Weather forecast data provided by [Open-Meteo](https://open-meteo.com/) under non-commercial attribution license.
 - Geocoding search provided by [Open-Meteo Geocoding API](https://geocoding-api.open-meteo.com/).
+
+---
+
+## Screenshots
+
+### Home Screen
+![Home Screen](screenshots/home-screen.png)
+
+### Settings Screen
+![Settings Screen](screenshots/settings-screen.png)
+
+### Recent Searches
+![Recent Searches](screenshots/recent-searches.png)
