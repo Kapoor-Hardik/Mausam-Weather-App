@@ -34,6 +34,7 @@ import com.example.mausamweather.presentation.components.CitySearchBar
 import com.example.mausamweather.presentation.components.CurrentWeatherHeroCard
 import com.example.mausamweather.presentation.components.ForecastSection
 import com.example.mausamweather.presentation.components.OfflineWarningBanner
+import com.example.mausamweather.presentation.components.RecentSearchesSection
 import com.example.mausamweather.presentation.components.WeatherMetricsCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,6 +88,16 @@ fun HomeScreen(
                     onQueryChanged = viewModel::onSearchQueryChanged,
                     onCitySelected = viewModel::onCitySelected
                 )
+            }
+
+            if (searchState.recentCities.isNotEmpty()) {
+                item {
+                    RecentSearchesSection(
+                        recentCities = searchState.recentCities,
+                        onCitySelected = viewModel::onCitySelected,
+                        onClearHistory = viewModel::onClearRecentCities
+                    )
+                }
             }
 
             when (val state = uiState) {

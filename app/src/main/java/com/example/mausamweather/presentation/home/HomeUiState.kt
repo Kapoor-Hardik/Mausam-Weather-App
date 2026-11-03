@@ -25,6 +25,7 @@ data class SearchUiState(
     val query: String = "",
     val isSearching: Boolean = false,
     val searchResults: List<City> = emptyList(),
+    val recentCities: List<City> = emptyList(),
     val errorMessage: String? = null,
     val isSearchActive: Boolean = false
 )

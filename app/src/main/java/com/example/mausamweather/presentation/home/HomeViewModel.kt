@@ -43,17 +43,18 @@ class HomeViewModel(
                     _uiState.value = currentState.copy(temperatureUnit = preferences.temperatureUnit)
                 }
 
-                // If no city is loaded, try loading the last selected city or default
-                if (currentSelectedCity == null && preferences.lastSelectedCityId != null) {
-                    // Try to fetch from repository cache based on ID - simulated by searching offline matching name
-                    // Since we don't have a direct getCityById in repo, we just load London as default for now
-                    // In a full implementation, we'd fetch city by ID from WeatherRepository
+                if (currentSelectedCity == null) {
                     if (_uiState.value is HomeUiState.InitialEmpty) {
-                       loadInitialDefaultCity()
+                        loadInitialDefaultCity()
                     }
-                } else if (_uiState.value is HomeUiState.InitialEmpty) {
-                    loadInitialDefaultCity()
                 }
+            }
+        }
+
+        // Observe recent searches history flow
+        viewModelScope.launch {
+            userPreferencesRepository.recentSearchesFlow.collect { recentList ->
+                _searchState.update { it.copy(recentCities = recentList) }
             }
         }
     }
@@ -116,9 +117,16 @@ class HomeViewModel(
         
         viewModelScope.launch {
             userPreferencesRepository.updateLastSelectedCityId(city.id)
+            userPreferencesRepository.addRecentCity(city)
         }
         
         fetchWeatherForCity(city)
+    }
+
+    fun onClearRecentCities() {
+        viewModelScope.launch {
+            userPreferencesRepository.clearRecentCities()
+        }
     }
 
     fun fetchWeatherForCity(city: City) {

@@ -65,7 +65,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun onCitySelected_fetchesWeatherForNewCityAndClearsSearch() = runTest {
+    fun onCitySelected_fetchesWeatherForNewCityAndAddsToRecentSearches() = runTest {
         val newCity = City(2, "Mumbai", 19.076, 72.8777, "India", "Maharashtra")
         viewModel.onCitySelected(newCity)
         testDispatcher.scheduler.advanceUntilIdle()
@@ -75,6 +75,24 @@ class HomeViewModelTest {
         val successState = state as HomeUiState.Success
         assertEquals("Mumbai", successState.weather.city.name)
         assertEquals("", viewModel.searchState.value.query)
+
+        val recent = viewModel.searchState.value.recentCities
+        assertEquals(1, recent.size)
+        assertEquals("Mumbai", recent[0].name)
+    }
+
+    @Test
+    fun onClearRecentCities_clearsRecentSearchesState() = runTest {
+        val city = City(2, "Mumbai", 19.076, 72.8777, "India", "Maharashtra")
+        viewModel.onCitySelected(city)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, viewModel.searchState.value.recentCities.size)
+
+        viewModel.onClearRecentCities()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.searchState.value.recentCities.isEmpty())
     }
 
     @Test
@@ -108,8 +126,10 @@ class HomeViewModelTest {
 
 class FakeUserPreferencesRepository : UserPreferencesRepository {
     val preferencesFlow = MutableStateFlow(UserPreferences())
+    val recentCitiesFlow = MutableStateFlow<List<City>>(emptyList())
 
     override val userPreferencesFlow: Flow<UserPreferences> = preferencesFlow
+    override val recentSearchesFlow: Flow<List<City>> = recentCitiesFlow
 
     override suspend fun updateTemperatureUnit(unit: TemperatureUnit) {
         preferencesFlow.update { it.copy(temperatureUnit = unit) }
@@ -121,5 +141,18 @@ class FakeUserPreferencesRepository : UserPreferencesRepository {
 
     override suspend fun updateLastSelectedCityId(cityId: Long) {
         preferencesFlow.update { it.copy(lastSelectedCityId = cityId) }
+    }
+
+    override suspend fun addRecentCity(city: City) {
+        val currentList = recentCitiesFlow.value.toMutableList()
+        currentList.removeAll { 
+            it.id == city.id || (it.name.equals(city.name, ignoreCase = true) && it.country.equals(city.country, ignoreCase = true)) 
+        }
+        currentList.add(0, city)
+        recentCitiesFlow.value = currentList.take(5)
+    }
+
+    override suspend fun clearRecentCities() {
+        recentCitiesFlow.value = emptyList()
     }
 }
