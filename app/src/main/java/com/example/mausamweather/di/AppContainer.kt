@@ -1,11 +1,28 @@
 package com.example.mausamweather.di
 
 import android.content.Context
+import com.example.mausamweather.data.remote.OpenMeteoRemoteDataSource
+import com.example.mausamweather.data.repository.MockWeatherRepository
+import com.example.mausamweather.data.repository.OpenMeteoWeatherRepository
+import com.example.mausamweather.domain.repository.WeatherRepository
 
 /**
  * Service Locator container for manual Dependency Injection.
  * Provides central access to repositories, data sources, and database instances.
  */
-class AppContainer(private val context: Context) {
-    // Container stub - populated as data and repository layers are integrated
+class AppContainer(
+    private val context: Context,
+    useMockRepository: Boolean = false
+) {
+    private val remoteDataSource by lazy {
+        OpenMeteoRemoteDataSource()
+    }
+
+    val weatherRepository: WeatherRepository by lazy {
+        if (useMockRepository) {
+            MockWeatherRepository()
+        } else {
+            OpenMeteoWeatherRepository(remoteDataSource)
+        }
+    }
 }
