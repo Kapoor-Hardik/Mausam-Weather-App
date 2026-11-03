@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mausamweather.domain.model.City
 import com.example.mausamweather.domain.model.TemperatureUnit
+import com.example.mausamweather.domain.repository.UserPreferencesRepository
 import com.example.mausamweather.domain.repository.WeatherRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +14,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
-    private val weatherRepository: WeatherRepository
+    private val weatherRepository: WeatherRepository,
+    private val userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.InitialEmpty)
@@ -30,7 +32,30 @@ class HomeViewModel(
     private var weatherJob: Job? = null
 
     init {
-        loadInitialDefaultCity()
+        // Observe user preferences for temperature unit and last selected city changes
+        viewModelScope.launch {
+            userPreferencesRepository.userPreferencesFlow.collect { preferences ->
+                _temperatureUnit.value = preferences.temperatureUnit
+                
+                // Update active success state if unit changes
+                val currentState = _uiState.value
+                if (currentState is HomeUiState.Success) {
+                    _uiState.value = currentState.copy(temperatureUnit = preferences.temperatureUnit)
+                }
+
+                // If no city is loaded, try loading the last selected city or default
+                if (currentSelectedCity == null && preferences.lastSelectedCityId != null) {
+                    // Try to fetch from repository cache based on ID - simulated by searching offline matching name
+                    // Since we don't have a direct getCityById in repo, we just load London as default for now
+                    // In a full implementation, we'd fetch city by ID from WeatherRepository
+                    if (_uiState.value is HomeUiState.InitialEmpty) {
+                       loadInitialDefaultCity()
+                    }
+                } else if (_uiState.value is HomeUiState.InitialEmpty) {
+                    loadInitialDefaultCity()
+                }
+            }
+        }
     }
 
     private fun loadInitialDefaultCity() {
@@ -88,6 +113,11 @@ class HomeViewModel(
                 errorMessage = null
             )
         }
+        
+        viewModelScope.launch {
+            userPreferencesRepository.updateLastSelectedCityId(city.id)
+        }
+        
         fetchWeatherForCity(city)
     }
 
@@ -145,11 +175,9 @@ class HomeViewModel(
         } else {
             TemperatureUnit.CELSIUS
         }
-        _temperatureUnit.value = newUnit
-
-        val currentState = _uiState.value
-        if (currentState is HomeUiState.Success) {
-            _uiState.value = currentState.copy(temperatureUnit = newUnit)
+        
+        viewModelScope.launch {
+            userPreferencesRepository.updateTemperatureUnit(newUnit)
         }
     }
 

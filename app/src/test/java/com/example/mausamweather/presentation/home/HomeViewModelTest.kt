@@ -1,10 +1,16 @@
 package com.example.mausamweather.presentation.home
 
 import com.example.mausamweather.data.repository.MockWeatherRepository
+import com.example.mausamweather.domain.model.AppTheme
 import com.example.mausamweather.domain.model.City
 import com.example.mausamweather.domain.model.TemperatureUnit
+import com.example.mausamweather.domain.model.UserPreferences
+import com.example.mausamweather.domain.repository.UserPreferencesRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -19,14 +25,16 @@ import org.junit.Test
 class HomeViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
-    private lateinit var mockRepository: MockWeatherRepository
+    private lateinit var mockWeatherRepository: MockWeatherRepository
+    private lateinit var fakePreferencesRepository: FakeUserPreferencesRepository
     private lateinit var viewModel: HomeViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        mockRepository = MockWeatherRepository()
-        viewModel = HomeViewModel(mockRepository)
+        mockWeatherRepository = MockWeatherRepository()
+        fakePreferencesRepository = FakeUserPreferencesRepository()
+        viewModel = HomeViewModel(mockWeatherRepository, fakePreferencesRepository)
     }
 
     @After
@@ -70,12 +78,13 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun onToggleTemperatureUnit_switchesBetweenCelsiusAndFahrenheit() = runTest {
+    fun onToggleTemperatureUnit_updatesRepositoryAndReflectsInUiState() = runTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(TemperatureUnit.CELSIUS, viewModel.temperatureUnit.value)
 
         viewModel.onToggleTemperatureUnit()
+        testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(TemperatureUnit.FAHRENHEIT, viewModel.temperatureUnit.value)
         val state = viewModel.uiState.value as HomeUiState.Success
@@ -84,7 +93,7 @@ class HomeViewModelTest {
 
     @Test
     fun fetchWeather_handlesRepositoryErrorState() = runTest {
-        mockRepository.shouldReturnError = true
+        mockWeatherRepository.shouldReturnError = true
         val city = City(99, "Error City", 0.0, 0.0, "Unknown")
 
         viewModel.fetchWeatherForCity(city)
@@ -94,5 +103,23 @@ class HomeViewModelTest {
         assertTrue(state is HomeUiState.Error)
         val errorState = state as HomeUiState.Error
         assertEquals("Mock network error", errorState.message)
+    }
+}
+
+class FakeUserPreferencesRepository : UserPreferencesRepository {
+    val preferencesFlow = MutableStateFlow(UserPreferences())
+
+    override val userPreferencesFlow: Flow<UserPreferences> = preferencesFlow
+
+    override suspend fun updateTemperatureUnit(unit: TemperatureUnit) {
+        preferencesFlow.update { it.copy(temperatureUnit = unit) }
+    }
+
+    override suspend fun updateAppTheme(theme: AppTheme) {
+        preferencesFlow.update { it.copy(theme = theme) }
+    }
+
+    override suspend fun updateLastSelectedCityId(cityId: Long) {
+        preferencesFlow.update { it.copy(lastSelectedCityId = cityId) }
     }
 }
